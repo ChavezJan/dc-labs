@@ -15,5 +15,13 @@ func main() {
 
 	}
 
+	if name == "" {
+
+		fmt.Println("Fatal Error")
+		return
+
+	}
+
 	fmt.Println("Hello", name, "Welcome to the jungle")
+
 }
