@@ -47,53 +47,123 @@ func generatePoints(s string) ([]Point, error) {
 // getArea gets the area inside from a given shape
 func getArea(points []Point) float64 {
 	// Your code goes here
-	var area float64
-	var perimetro float64
+	var area, perimetro, semiperimetro float64
+	var lados []float64
+
 	area = 0
 	perimetro = 0
 
-	var lados []float64
-	//area = riz(sp(p-a)(p-b)(p-c))
-	log.Printf("Numero de Vectores: %v\n", len(points))
+	if len(points) <= 2 {
+		return 0
+	}
 
 	for i := 0; i < len(points)-1; i++ {
-		perimetro += math.Hypot(points[i+1].X-points[i].X, points[i+1].Y-points[i].Y)
-		lados = append(lados, math.Hypot(points[i+1].X-points[i].X, points[i+1].Y-points[i].Y))
-	}
-	perimetro += math.Hypot(points[len(points)-1].X-points[0].X, points[len(points)-1].Y-points[0].Y)
-	lados = append(lados, math.Hypot(points[len(points)-1].X-points[0].X, points[len(points)-1].Y-points[0].Y))
 
-	var semiperimetro float64
-	semiperimetro = perimetro / 2
+		perimetro += math.Hypot(
+			points[i+1].X-points[i].X,
+			points[i+1].Y-points[i].Y)
+
+		lados = append(
+			lados,
+			math.Hypot(
+				points[i+1].X-points[i].X,
+				points[i+1].Y-points[i].Y))
+	}
+
+	perimetro += math.Hypot(
+		points[len(points)-1].X-points[0].X,
+		points[len(points)-1].Y-points[0].Y)
+
+	lados = append(
+		lados,
+		math.Hypot(
+			points[len(points)-1].X-points[0].X,
+			points[len(points)-1].Y-points[0].Y))
 
 	if (len(points)) > 3 {
 		if len(points) == 4 {
 			var lado1 float64
-			lado1 = math.Hypot(lados[0], lados[1])
 
-			area += math.Sqrt(semiperimetro * (semiperimetro - lados[0]) * (semiperimetro - lados[1]) * (semiperimetro - lado1))
-			area += math.Sqrt(semiperimetro * (semiperimetro - lados[2]) * (semiperimetro - lados[3]) * (semiperimetro - lado1))
+			lado1 = math.Hypot(
+				points[2].X-points[0].X,
+				points[2].Y-points[0].Y)
 
-			log.Printf("Lado faltante %v", lado1)
+			semiperimetro = (lados[0] +
+				lados[1] +
+				lado1) / 2
+
+			area += math.Sqrt(
+				semiperimetro *
+					(semiperimetro - lados[0]) *
+					(semiperimetro - lados[1]) *
+					(semiperimetro - lado1))
+
+			semiperimetro = (lados[2] +
+				lados[3] +
+				lado1) / 2
+
+			area += math.Sqrt(
+				semiperimetro *
+					(semiperimetro - lados[2]) *
+					(semiperimetro - lados[3]) *
+					(semiperimetro - lado1))
 
 			return area
 		}
 		if len(points) == 5 {
 			var lado1, lado2 float64
-			lado1 = math.Hypot(lados[0], lados[1])
-			lado2 = math.Hypot(lados[2], lados[3])
 
-			area += math.Sqrt(semiperimetro * (semiperimetro - lados[0]) * (semiperimetro - lados[1]) * (semiperimetro - lado1))
-			area += math.Sqrt(semiperimetro * (semiperimetro - lados[2]) * (semiperimetro - lados[3]) * (semiperimetro - lado2))
-			area += math.Sqrt(semiperimetro * (semiperimetro - lados[4]) * (semiperimetro - lado1) * (semiperimetro - lado2))
+			lado1 = math.Hypot(
+				points[2].X-points[0].X,
+				points[2].Y-points[0].Y)
 
-			log.Printf("Lado faltante %v", lado1)
+			lado2 = math.Hypot(
+				points[4].X-points[2].X,
+				points[4].Y-points[2].Y)
+
+			semiperimetro = (lados[0] +
+				lados[1] +
+				lado1) / 2
+
+			area += math.Sqrt(
+				semiperimetro *
+					(semiperimetro - lados[0]) *
+					(semiperimetro - lados[1]) *
+					(semiperimetro - lado1))
+
+			semiperimetro = (lados[2] +
+				lados[3] +
+				lado2) / 2
+
+			area += math.Sqrt(
+				semiperimetro *
+					(semiperimetro - lados[2]) *
+					(semiperimetro - lados[3]) *
+					(semiperimetro - lado2))
+
+			semiperimetro = (lados[4] +
+				lado2 +
+				lado1) / 2
+
+			area += math.Sqrt(
+				semiperimetro *
+					(semiperimetro - lados[4]) *
+					(semiperimetro - lado1) *
+					(semiperimetro - lado2))
 
 			return area
 		}
 	}
 
-	area = math.Sqrt(semiperimetro * (semiperimetro - lados[0]) * (semiperimetro - lados[1]) * (semiperimetro - lados[2]))
+	semiperimetro = (lados[0] +
+		lados[1] +
+		lados[2]) / 2
+
+	area = math.Sqrt(
+		semiperimetro *
+			(semiperimetro - lados[0]) *
+			(semiperimetro - lados[1]) *
+			(semiperimetro - lados[2]))
 
 	return area
 }
