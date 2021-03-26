@@ -1,48 +1,75 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"io"
 	"log"
 	"net"
 	"os"
+	"time"
 )
 
-func createChannel(conn io.Reader) chan int {
-	done := make(chan int)
-	go func() {
-		io.Copy(os.Stdout, conn) // NOTE: ignoring errors
-		log.Println("done")
-		done <- 1 // signal the main goroutine
-	}()
-	return done
+type Input struct {
+	port     int
+	timezone string
+}
+
+func handleConn(c net.Conn, timeZone string) {
+	defer c.Close()
+	loc, _ := time.LoadLocation(timeZone)
+	for {
+		time_now := time.Now().In(loc).Format("15:04:05\n")
+		response := timeZone + " " + time_now
+		_, err := io.WriteString(c, response)
+
+		if err != nil {
+			return
+		} else {
+			_, error := io.WriteString(c, timeZone+" TIMEZONE NOT AVAILABLE")
+			if error != nil {
+				return
+			}
+		}
+		time.Sleep(1 * time.Second)
+	}
 }
 
 func main() {
-	conn, err := net.Dial("tcp", "localhost:8010")
-	if err != nil {
-		log.Fatal(err)
-	}
 
-	conn1, err := net.Dial("tcp", "localhost:8020")
-	if err != nil {
-		log.Fatal(err)
-	}
+	var input Input
+	var host string
 
-	conn2, err := net.Dial("tcp", "localhost:8030")
+	input = manageInput()
+	host = "0.0.0.0:" + fmt.Sprintf("%d", input.port)
+
+	listener, err := net.Listen("tcp", host)
 	if err != nil {
 		log.Fatal(err)
 	}
-	var servers [3]chan int
-	for i := range servers {
-		servers[i] = make(chan int)
+	log.Print(host)
+	for {
+		conn, err := listener.Accept()
+		log.Print(conn)
+		if err != nil {
+			log.Print(err)
+			continue
+		}
+		go handleConn(conn, input.timezone)
 	}
-	servers[0] = createChannel(conn)
-	servers[1] = createChannel(conn1)
-	servers[2] = createChannel(conn2)
-	for i := range servers {
-		x := 1
-		x = <-servers[i] // wait for background goroutine to finish
-		log.Println("Channel Closed with value: ", x)
-		close(servers[i])
-	}
+}
+
+func manageInput() Input {
+
+	var input Input
+	var tmpPort *int
+
+	input.timezone = os.Getenv("TZ")
+
+	tmpPort = flag.Int("port", 9000, "port number.")
+	flag.Parse()
+	input.port = *tmpPort
+
+	return input
+
 }
