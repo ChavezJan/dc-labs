@@ -43,7 +43,7 @@ func login(c *gin.Context) {
 	print("inicia login\n")
 
 	user := c.MustGet(gin.AuthUserKey).(string)
-	token := GenerateSecureToken(11)
+	token := GenerateSecureToken(1)
 
 	tokens[user] = token
 
@@ -63,10 +63,9 @@ func logout(c *gin.Context) {
 
 	if _, usok := tokens[user]; usok {
 		print("se pudo cerrar session\n")
-
 		delete(tokens, user)
 		c.AbortWithStatus(401)
-		c.JSON(http.StatusOK, gin.H{"message": "Bye username, your token has been revoked"})
+		c.JSON(http.StatusOK, gin.H{"message": "Bye username, your token has been revoked", "token": user})
 		return
 	} else {
 		print("no se pudo\n")
@@ -84,7 +83,7 @@ func status(c *gin.Context) {
 	fmt.Println(tokens)
 	if _, usok := tokens[user]; usok {
 		print("el tiempo es \n")
-		c.JSON(http.StatusOK, gin.H{"message": "Hi username, the DPIP System is Up and Running", "time": dt})
+		c.JSON(http.StatusOK, gin.H{"message": "Hi username, the DPIP System is Up and Running", "time": dt, "token": tokens[user]})
 	} else {
 		c.AbortWithStatus(401)
 	}
