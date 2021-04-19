@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"net/http"
-	"path/filepath"
 
 	"strconv"
 	"strings"
@@ -15,7 +14,6 @@ import (
 
 var info = gin.H{
 	"username": gin.H{"email": "username@gmail.com", "token": ""},
-	"mariana":  gin.H{"email": "mariana@gmail.com", "token": ""},
 }
 
 var tokens = make(map[string]string)
@@ -25,7 +23,7 @@ func main() {
 	r := gin.Default()
 	r.Use()
 
-	auth := r.Group("/", gin.BasicAuth(gin.Accounts{"username": "password", "mariana": "gomez"}))
+	auth := r.Group("/", gin.BasicAuth(gin.Accounts{"username": "password"}))
 
 	auth.GET("/login", login)
 	r.GET("/logout", logout)
@@ -46,8 +44,7 @@ func login(c *gin.Context) {
 
 	tokens[user] = token
 
-	if _, usok := info[user]; usok {
-		print("el token es: ", token, " el usuario es: ", user, "\n ")
+	if _, userOk := info[user]; userOk {
 		c.JSON(http.StatusOK, gin.H{"message": "Hi " + user + " welcome to the DPIP System", "token": tokens[user]})
 	} else {
 		c.AbortWithStatus(401)
@@ -85,32 +82,19 @@ func status(c *gin.Context) {
 }
 
 func upload(c *gin.Context) {
-	print("inicio de upload\n")
-
-	exist, _, token := auth(c)
+	exist, _, _ := auth(c)
 
 	if exist == true {
-		file, err := c.FormFile("image")
-		if err != nil {
-			c.JSON(http.StatusOK, gin.H{"message": "Error uploading image", "error": err.Error})
-			return
-		}
-		t := time.Now()
-		time := t.Format("20060102150405")
-		uploadedImage := filepath.Base(file.Filename)
-		fileName := token + "_" + time + "_" + filepath.Base(file.Filename)
-		if err := c.SaveUploadedFile(file, fileName); err != nil {
-			c.JSON(http.StatusOK, gin.H{"message": "Error uploading image", "error": err.Error})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"message": "An image has been successfully uploaded", "filename": uploadedImage, "size": strconv.FormatInt(file.Size, 10) + "bytes"})
-
+	_,header,err :=c.Request.FormFile("data")
+    if err!=nil{
+        return
+    }
+    size:= strconv.Itoa(int(header.Size))
+    c.JSON(http.StatusOK,gin.H{"status":"SUCCESS","Filename":header.Filename,"filesize":size+" bytes"})
 	} else {
 		c.JSON(http.StatusOK, gin.H{"message": "Invalid Token"})
 		c.AbortWithStatus(401)
 	}
-
-	print("fin de upload\n")
 }
 
 func GenerateSecureToken(length int) string {
