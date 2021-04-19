@@ -3,9 +3,11 @@ package main
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"fmt"
 	"net/http"
+	"path/filepath"
+
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -20,27 +22,24 @@ var tokens = make(map[string]string)
 
 func main() {
 
-	print("inicia\n")
-
 	r := gin.Default()
 	r.Use()
 
 	auth := r.Group("/", gin.BasicAuth(gin.Accounts{"username": "password", "mariana": "gomez"}))
 
-	print("crea grupos\n")
-
 	auth.GET("/login", login)
-	auth.GET("/logout", logout)
-	auth.GET("/status", status)
-	auth.GET("/upload", upload)
-	r.Run(":8080")
+	r.GET("/logout", logout)
+	r.GET("/status", status)
+	r.GET("/upload", upload)
+	r.Run()
 
-	print("termina\n")
 }
 
 func login(c *gin.Context) {
 
-	print("inicia login\n")
+	userToken := c.MustGet(gin.AuthUserKey).(string)
+
+	print(userToken)
 
 	user := c.MustGet(gin.AuthUserKey).(string)
 	token := GenerateSecureToken(1)
@@ -49,62 +48,68 @@ func login(c *gin.Context) {
 
 	if _, usok := info[user]; usok {
 		print("el token es: ", token, " el usuario es: ", user, "\n ")
-		c.JSON(http.StatusOK, gin.H{"message": "Hi username welcome to the DPIP System", "token": tokens[user]})
+		c.JSON(http.StatusOK, gin.H{"message": "Hi " + user + " welcome to the DPIP System", "token": tokens[user]})
 	} else {
 		c.AbortWithStatus(401)
 	}
-	print("termina login\n")
+
 }
 
 func logout(c *gin.Context) {
 
-	print("inicio de logoff\n")
-	user := c.MustGet(gin.AuthUserKey).(string)
+	exist, user, _ := auth(c)
 
-	if _, usok := tokens[user]; usok {
-		print("se pudo cerrar session\n")
+	if exist == true {
 		delete(tokens, user)
 		c.AbortWithStatus(401)
-		c.JSON(http.StatusOK, gin.H{"message": "Bye username, your token has been revoked", "token": user})
-		return
+		c.JSON(http.StatusOK, gin.H{"message": "Bye " + user + ", your token has been revoked"})
 	} else {
-		print("no se pudo\n")
+		c.JSON(http.StatusOK, gin.H{"message": "Invalid Token"})
 		c.AbortWithStatus(401)
-
 	}
 
-	print("final de logoff \n")
 }
 
 func status(c *gin.Context) {
-	print("inicio de status\n")
-	user := c.MustGet(gin.AuthUserKey).(string)
-	dt := time.Now()
-	fmt.Println(tokens)
-	if _, usok := tokens[user]; usok {
-		print("el tiempo es \n")
-		c.JSON(http.StatusOK, gin.H{"message": "Hi username, the DPIP System is Up and Running", "time": dt, "token": tokens[user]})
+
+	exist, user, _ := auth(c)
+
+	if exist == true {
+		current := time.Now()
+		c.JSON(http.StatusOK, gin.H{"message": "Hi " + user + ", the DPIP System is Up and Running", "time": current.Format("2006-01-02 15:04:05")})
 	} else {
+		c.JSON(http.StatusOK, gin.H{"message": "Invalid Token"})
 		c.AbortWithStatus(401)
 	}
-	print("fin de status\n")
+
 }
 
 func upload(c *gin.Context) {
 	print("inicio de upload\n")
-	user := c.MustGet(gin.AuthUserKey).(string)
-	if _, usok := tokens[user]; usok {
-		_, header, err := c.Request.FormFile("image")
+
+	exist, _, token := auth(c)
+
+	if exist == true {
+		file, err := c.FormFile("image")
 		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"message": "Error uploading image", "error": err.Error})
 			return
 		}
-		size := strconv.Itoa(int(header.Size))
-		c.JSON(http.StatusOK, gin.H{"status": "SUCCESS", "Filename": header.Filename, "filesize": size + " bytes"})
-		print("nombre de archivo es ", header.Filename, " y su peso es de ", size, "\n")
+		t := time.Now()
+		time := t.Format("20060102150405")
+		uploadedImage := filepath.Base(file.Filename)
+		fileName := token + "_" + time + "_" + filepath.Base(file.Filename)
+		if err := c.SaveUploadedFile(file, fileName); err != nil {
+			c.JSON(http.StatusOK, gin.H{"message": "Error uploading image", "error": err.Error})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "An image has been successfully uploaded", "filename": uploadedImage, "size": strconv.FormatInt(file.Size, 10) + "bytes"})
 
 	} else {
+		c.JSON(http.StatusOK, gin.H{"message": "Invalid Token"})
 		c.AbortWithStatus(401)
 	}
+
 	print("fin de upload\n")
 }
 
@@ -115,4 +120,29 @@ func GenerateSecureToken(length int) string {
 	}
 	//fmt.Println(hex.EncodeToString(b))
 	return hex.EncodeToString(b)
+}
+
+func auth(c *gin.Context) (bool, string, string) {
+
+	exist := false
+
+	bearer := c.Request.Header["Authorization"]
+	bearerToken := bearer[0]
+	splitedToken := strings.Split(bearerToken, " ")
+	token := string(splitedToken[1])
+
+	userName := ""
+	userToken := ""
+
+	for user, tokenList := range tokens {
+
+		if token == tokenList {
+			exist = true
+			userToken = tokenList
+			userName = user
+		}
+
+	}
+
+	return exist, userName, userToken
 }
