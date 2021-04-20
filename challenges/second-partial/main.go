@@ -87,6 +87,8 @@ func upload(c *gin.Context) {
 	if exist == true {
 	_,header,err :=c.Request.FormFile("data")
     if err!=nil{
+		c.AbortWithStatus(401)
+
         return
     }
     size:= strconv.Itoa(int(header.Size))
